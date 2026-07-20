@@ -228,6 +228,20 @@
   .prev .s { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
   .prev .x { font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
 
+  /* ── Supplier list ───────────────────────────────────────── */
+  .lbl-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .link-mini { background: none; border: none; padding: 0 0 6px; font: inherit; font-size: 11.5px; font-weight: 600; color: var(--accent); }
+  .link-mini:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .vend-add { display: flex; gap: 8px; margin-bottom: 14px; }
+  .vend-add .inp { flex: 1; }
+  .vend-list { display: flex; flex-wrap: wrap; gap: 7px; max-height: 220px; overflow-y: auto; }
+  .vend-item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 8px 6px 12px; background: var(--bg-alt); border: 1px solid var(--card-border); border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+  .vend-item.used { border-color: var(--accent); }
+  .vend-item .x { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border: none; border-radius: 50%; background: none; color: var(--text-faint); font-size: 15px; line-height: 1; padding: 0; }
+  .vend-item .x:hover { background: var(--danger-soft); color: var(--danger); }
+  .vend-item .x[disabled] { opacity: 0.32; cursor: default; }
+  .vend-item .x[disabled]:hover { background: none; color: var(--text-faint); }
+
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chip { font-size: 10px; font-weight: 660; letter-spacing: 0.03em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 
@@ -395,7 +409,14 @@
     <div class="form-grid">
       <div><label class="lbl" for="aQty">How many spools</label><input class="inp" id="aQty" type="number" min="1" max="200" value="1" /></div>
       <div><label class="lbl" for="aCost">Cost each</label><input class="inp" id="aCost" type="number" min="0" step="0.01" placeholder="Leave blank if unknown" /></div>
-      <div><label class="lbl" for="aVendor">Vendor / source</label><input class="inp" id="aVendor" type="text" placeholder="Amazon, Bambu store…" autocomplete="off" /></div>
+      <div>
+        <div class="lbl-row">
+          <label class="lbl" for="aVendor">Supplier</label>
+          <button type="button" class="link-mini" id="vendorManage">Manage</button>
+        </div>
+        <input class="inp" id="aVendor" type="text" list="vendorList" placeholder="Pick or type a new one…" autocomplete="off" />
+        <datalist id="vendorList"></datalist>
+      </div>
       <div><label class="lbl" for="aDate">Purchased</label><input class="inp" id="aDate" type="date" /></div>
       <div><label class="lbl" for="aStatus">Condition</label><select class="inp" id="aStatus"><option value="sealed">Sealed</option><option value="open">Opened</option><option value="empty">Empty</option></select></div>
       <div><label class="lbl" for="aOrder">Order ref</label><input class="inp" id="aOrder" type="text" placeholder="Optional" autocomplete="off" /></div>
@@ -405,6 +426,24 @@
     <div class="modal-actions">
       <button class="btn" id="addCancel">Cancel</button>
       <button class="btn primary" id="addSave">Add to inventory</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Manage suppliers modal ────────────────────────────── -->
+<div class="modal-wrap" id="vendModal">
+  <div class="modal">
+    <h3>Suppliers</h3>
+    <p class="msub">Your dropdown list. Anything you type when adding a spool gets remembered here automatically.</p>
+    <div class="vend-add">
+      <input class="inp" id="vendNew" type="text" placeholder="Add a supplier…" autocomplete="off" />
+      <button class="btn primary" id="vendAdd">Add</button>
+    </div>
+    <div id="vendList" class="vend-list"></div>
+    <p class="hint" id="vendInUse"></p>
+    <div class="modal-actions">
+      <button class="btn" id="vendReset">Reset to defaults</button>
+      <button class="btn primary" id="vendDone">Done</button>
     </div>
   </div>
 </div>
@@ -879,7 +918,98 @@ function closeModal(id) { $(id).classList.remove("open"); }
 document.querySelectorAll(".modal-wrap").forEach(w =>
   w.addEventListener("click", e => { if (e.target === w) w.classList.remove("open"); }));
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") document.querySelectorAll(".modal-wrap.open").forEach(w => w.classList.remove("open"));
+  // Close only the topmost modal, so escaping the supplier manager doesn't
+  // also discard the half-filled add form underneath it.
+  if (e.key !== "Escape") return;
+  const open = document.querySelectorAll(".modal-wrap.open");
+  if (open.length) open[open.length - 1].classList.remove("open");
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Suppliers
+   A datalist, so the field stays free-text — pick from the list or
+   type anything new. New names are remembered on save, so the list
+   grows as you buy. Kept in localStorage rather than Firestore: the
+   published rules only permit the spools and aliases subcollections,
+   and a supplier list isn't worth another rules deploy. Anything
+   already used in inventory is merged in regardless, so the dropdown
+   is never missing a name you've actually used — including on a
+   device that's never seen this list.
+   ═══════════════════════════════════════════════════════════ */
+const VENDOR_KEY = "spooltrack.vendors";
+const DEFAULT_VENDORS = [
+  "Amazon", "Bambu Lab", "Polymaker", "Prusa", "MatterHackers", "Printed Solid",
+  "Micro Center", "Atomic Filament", "Protopasta", "eSUN", "SUNLU", "Overture",
+  "Filamentum", "AliExpress"
+];
+
+function loadVendors() {
+  try {
+    const raw = localStorage.getItem(VENDOR_KEY);
+    if (raw) { const a = JSON.parse(raw); if (Array.isArray(a)) return a; }
+  } catch { /* corrupt or unavailable — fall back to defaults */ }
+  return DEFAULT_VENDORS.slice();
+}
+function saveVendors(list) {
+  try { localStorage.setItem(VENDOR_KEY, JSON.stringify(list)); } catch { /* private mode */ }
+}
+/* Names actually on spools — these can't be removed from the list. */
+function vendorsInUse() {
+  return new Set(SPOOLS.map(s => s.vendor).filter(Boolean));
+}
+function allVendors() {
+  const seen = new Map();                       // lowercase → display form
+  for (const v of loadVendors().concat([...vendorsInUse()])) {
+    const k = v.trim().toLowerCase();
+    if (k && !seen.has(k)) seen.set(k, v.trim());
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
+function refreshVendorDatalist() {
+  $("vendorList").innerHTML = allVendors().map(v => '<option value="' + esc(v) + '"></option>').join("");
+}
+/* Remember a newly typed supplier so it's in the list next time. */
+function rememberVendor(name) {
+  const v = (name || "").trim();
+  if (!v) return;
+  const list = loadVendors();
+  if (list.some(x => x.trim().toLowerCase() === v.toLowerCase())) return;
+  list.push(v); saveVendors(list); refreshVendorDatalist();
+}
+
+function renderVendorManager() {
+  const inUse = new Set([...vendorsInUse()].map(v => v.trim().toLowerCase()));
+  const list = allVendors();
+  $("vendList").innerHTML = list.map(v => {
+    const used = inUse.has(v.trim().toLowerCase());
+    return '<span class="vend-item' + (used ? " used" : "") + '">' + esc(v) +
+      '<button class="x" data-v="' + esc(v) + '"' + (used ? ' disabled title="In use on spools in your inventory"' : ' title="Remove"') +
+      '>&times;</button></span>';
+  }).join("") || '<p class="hint">No suppliers yet.</p>';
+  const usedCount = list.filter(v => inUse.has(v.trim().toLowerCase())).length;
+  $("vendInUse").textContent = usedCount
+    ? usedCount + " supplier" + (usedCount > 1 ? "s are" : " is") + " in use on spools and can't be removed."
+    : "";
+  $("vendList").querySelectorAll(".x:not([disabled])").forEach(b => b.addEventListener("click", () => {
+    const v = b.dataset.v;
+    saveVendors(loadVendors().filter(x => x.trim().toLowerCase() !== v.trim().toLowerCase()));
+    refreshVendorDatalist(); renderVendorManager();
+  }));
+}
+function addVendorFromInput() {
+  const v = $("vendNew").value.trim();
+  if (!v) return;
+  if (allVendors().some(x => x.toLowerCase() === v.toLowerCase())) { toast("“" + v + "” is already on the list."); return; }
+  rememberVendor(v);
+  $("vendNew").value = ""; renderVendorManager(); $("vendNew").focus();
+}
+$("vendorManage").addEventListener("click", () => { renderVendorManager(); openModal("vendModal"); setTimeout(() => $("vendNew").focus(), 60); });
+$("vendAdd").addEventListener("click", addVendorFromInput);
+$("vendNew").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addVendorFromInput(); } });
+$("vendDone").addEventListener("click", () => { closeModal("vendModal"); refreshVendorDatalist(); });
+$("vendReset").addEventListener("click", () => {
+  if (!confirm("Reset the supplier list to the built-in defaults? Suppliers already used on spools stay in the dropdown.")) return;
+  saveVendors(DEFAULT_VENDORS.slice()); refreshVendorDatalist(); renderVendorManager();
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -895,6 +1025,7 @@ function openAdd(product, bindCode) {
     '<div><div class="t">' + esc(product.color) + "</div>" +
     '<div class="s">' + esc([product.brand, product.series, product.material].filter(Boolean).join(" · ")) + "</div>" +
     '<div class="x">' + [product.weight ? product.weight + " g" : "", product.diameter ? product.diameter + " mm" : ""].filter(Boolean).join(" · ") + "</div></div>";
+  refreshVendorDatalist();
   $("aQty").value = 1; $("aCost").value = ""; $("aVendor").value = ""; $("aOrder").value = ""; $("aNotes").value = "";
   $("aStatus").value = "sealed";
   $("aDate").value = new Date().toISOString().slice(0, 10);
@@ -912,6 +1043,7 @@ $("addSave").addEventListener("click", async () => {
   const costRaw = $("aCost").value.trim();
   const cost = costRaw === "" ? null : Number(costRaw);
   if (cost !== null && (isNaN(cost) || cost < 0)) { toast("That cost doesn't look right.", true); return; }
+  const vendor = $("aVendor").value.trim() || null;
   const p = PENDING;
   const base = {
     key: p.key || null,
@@ -921,7 +1053,7 @@ $("addSave").addEventListener("click", async () => {
     density: p.density || null, tempMin: p.tempMin || null, tempMax: p.tempMax || null,
     bedMin: p.bedMin || null, bedMax: p.bedMax || null,
     gtin: (p.codes && p.codes[0]) || null,
-    cost, vendor: $("aVendor").value.trim() || null, orderRef: $("aOrder").value.trim() || null,
+    cost, vendor, orderRef: $("aOrder").value.trim() || null,
     purchasedAt: $("aDate").value || null, status: $("aStatus").value,
     notes: $("aNotes").value.trim() || null,
     addedAtMs: Date.now(), addedAt: serverTimestamp()
@@ -943,6 +1075,7 @@ $("addSave").addEventListener("click", async () => {
       }
     }
     await batch.commit();
+    rememberVendor(vendor);
     closeModal("addModal");
     toast(qty + " spool" + (qty > 1 ? "s" : "") + " added" + (PENDING_BIND ? " · barcode linked" : ""));
     PENDING = null; PENDING_BIND = null;

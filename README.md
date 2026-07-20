@@ -17,9 +17,15 @@ sign-in.
   hit. When one misses, you search and pick the filament once, and SpoolTrack
   binds that barcode to it permanently in your own database. The next scan of
   that spool model is instant.
-- **Track individual spools** — each with its own cost, vendor, purchase date,
+- **Track individual spools** — each with its own cost, supplier, purchase date,
   order ref, and condition (sealed / open / empty). Cost is optional, so
   existing stock can go in without it.
+- **Pick a supplier** from a dropdown seeded with the usual suspects (Amazon,
+  Bambu Lab, Polymaker, Prusa, MatterHackers…). It's a free-text field backed by
+  a `datalist`, so you can always type something new — and anything you type is
+  remembered for next time. "Manage" lets you add or remove entries; suppliers
+  already used on spools are locked so the list can't drift out of sync with
+  your data.
 - **See it all** as colour-coded periodic-table tiles driven by the database's
   hex codes, with light and dark themes.
 
@@ -84,6 +90,12 @@ Everything is per-user under `users/{uid}/`:
   of the filament so inventory still renders if the catalog changes underneath.
 - `aliases/{barcode}` — learned barcode bindings, keyed by the normalised code
   so a rescan is one direct read. UPC-A and its EAN-13 form are both indexed.
+
+The supplier list is the one thing kept in `localStorage` rather than Firestore,
+because the published rules permit only those two subcollections and a dropdown
+list isn't worth another rules deploy. It's per-device, but suppliers already
+used on spools are merged into the dropdown from the inventory itself — so a
+fresh device still shows every supplier you've actually bought from.
 
 ## Setup
 
