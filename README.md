@@ -28,6 +28,25 @@ sign-in.
   your data.
 - **See it all** as colour-coded periodic-table tiles driven by the database's
   hex codes, with light and dark themes.
+- **Report on supplier spend** — spend, spools, kg and cost-per-kg per supplier,
+  with a purchase-date range filter and CSV export.
+
+## Supplier spend
+
+The Suppliers tab is built entirely from spool records, which are synced — the
+dropdown list is only an input aid and holds no purchase data.
+
+One thing it does deliberately: **cost-per-kg divides spend by the weight of the
+spools that actually have a cost**, not by total weight. Dividing by total weight
+would silently understate every supplier whose stock is only part-costed, which
+is the easiest way to make a spend report quietly lie. Spools without a cost are
+counted in kg, flagged in the row, and called out in a note under the table.
+A supplier with no costs at all shows "—" rather than $0/kg.
+
+Because the field is free text, the thing that would really corrupt this report
+is name drift — "Amazon" vs "amazon" vs "Amazn" becoming three rows. Two
+defences: names are folded onto the canonical spelling on save, and the Manage
+sheet can rename or merge a supplier across every spool that uses it.
 
 ## Barcode coverage — read this before you expect scanning to just work
 

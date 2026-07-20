@@ -30,6 +30,11 @@
     --shadow: 0 18px 50px -20px rgba(0,0,0,0.7);
     --glow: rgba(45, 212, 191, 0.16);
     --tile-ring: rgba(255,255,255,0.10);
+    /* Data-mark colour. Deliberately NOT --accent: the bright teal reads as a
+       button, and at L 0.785 it fails the lightness band for a fill. This step
+       is validated against both the light and dark chart surfaces. */
+    --chart-bar: #0d9488;
+    --bar-track: rgba(255,255,255,0.07);
   }
   :root[data-theme="light"] {
     --bg: #f4f5f6;
@@ -54,6 +59,8 @@
     --shadow: 0 16px 40px -24px rgba(20,30,35,0.35);
     --glow: rgba(13, 148, 136, 0.12);
     --tile-ring: rgba(0,0,0,0.10);
+    --chart-bar: #0d9488;
+    --bar-track: rgba(0,0,0,0.07);
   }
 
   * { box-sizing: border-box; }
@@ -228,6 +235,30 @@
   .prev .s { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
   .prev .x { font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
 
+  /* ── Supplier report ─────────────────────────────────────── */
+  .rep-wrap { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 6px 4px; overflow-x: auto; }
+  table.rep { width: 100%; border-collapse: collapse; min-width: 620px; }
+  table.rep th { font-size: 10.5px; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint);
+    text-align: right; padding: 14px 14px 10px; white-space: nowrap; }
+  table.rep th:first-child, table.rep td:first-child { text-align: left; }
+  table.rep th.sortable { cursor: pointer; }
+  table.rep th.sortable:hover { color: var(--text); }
+  table.rep th.on { color: var(--accent); }
+  table.rep td { padding: 11px 14px; font-size: 13.5px; text-align: right; border-top: 1px solid var(--divider); vertical-align: middle; }
+  table.rep tbody tr:hover td { background: var(--bg-alt); }
+  table.rep tfoot td { border-top: 1.5px solid var(--card-border); font-weight: 700; }
+  .rep-name { font-weight: 640; }
+  .warn-dot { color: var(--warn); font-size: 10px; margin-left: 6px; vertical-align: 1px; }
+  .rep-spend { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 132px; }
+  .rep-spend .v { font-weight: 660; font-variant-numeric: tabular-nums; }
+  /* Single-series magnitude bar: square at the baseline, 4px rounded data-end. */
+  .mbar { width: 100%; height: 8px; background: var(--bar-track); border-radius: 2px; }
+  /* No min-width: a zero value must draw zero ink, not a stub. */
+  .mbar span { display: block; height: 100%; background: var(--chart-bar); border-radius: 0 4px 4px 0; }
+  .num { font-variant-numeric: tabular-nums; }
+  .muted-cell { color: var(--text-faint); }
+  .rep-note { font-size: 12px; color: var(--text-faint); margin: 14px 2px 0; line-height: 1.55; }
+
   /* ── Supplier list ───────────────────────────────────────── */
   .lbl-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
   .link-mini { background: none; border: none; padding: 0 0 6px; font: inherit; font-size: 11.5px; font-weight: 600; color: var(--accent); }
@@ -237,6 +268,8 @@
   .vend-list { display: flex; flex-wrap: wrap; gap: 7px; max-height: 220px; overflow-y: auto; }
   .vend-item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 8px 6px 12px; background: var(--bg-alt); border: 1px solid var(--card-border); border-radius: 999px; font-size: 12.5px; font-weight: 600; }
   .vend-item.used { border-color: var(--accent); }
+  .vend-item .pen { border: none; background: none; padding: 0 1px; color: var(--text-faint); font-size: 12px; line-height: 1; }
+  .vend-item .pen:hover { color: var(--accent); }
   .vend-item .x { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border: none; border-radius: 50%; background: none; color: var(--text-faint); font-size: 15px; line-height: 1; padding: 0; }
   .vend-item .x:hover { background: var(--danger-soft); color: var(--danger); }
   .vend-item .x[disabled] { opacity: 0.32; cursor: default; }
@@ -335,6 +368,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10.5 8v8M14 8v8M17 8v8" stroke-width="1.6"/></svg>
         Scan &amp; Add
       </button>
+      <button class="tab" data-tab="rep">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+        Suppliers
+      </button>
     </div>
 
     <!-- ═══ Inventory ═══ -->
@@ -386,10 +423,37 @@
         <div class="results" id="results"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="manualPanel">
         <h3>Not in the database?</h3>
         <p class="psub">Roughly 1 in 6 spools carries a barcode the open database knows, and some brands have none at all. Add anything by hand — it lives in your inventory exactly the same way.</p>
         <button class="btn" id="manualBtn">Add a filament manually</button>
+      </div>
+    </section>
+
+    <!-- ═══ Supplier spend ═══ -->
+    <section id="tab-rep" hidden>
+      <div class="stats" id="repStats"></div>
+      <div class="toolbar">
+        <div class="field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          <input id="repFrom" type="date" title="Purchased on or after" />
+        </div>
+        <div class="field">
+          <span style="font-size:12.5px;color:var(--text-faint)">to</span>
+          <input id="repTo" type="date" title="Purchased on or before" />
+        </div>
+        <button class="btn" id="repClear">All time</button>
+        <div class="spacer"></div>
+        <button class="btn" id="repExport">Export report</button>
+      </div>
+      <div class="rep-wrap">
+        <table class="rep" id="repTable"></table>
+      </div>
+      <p class="rep-note" id="repNote"></p>
+      <div class="empty" id="repEmpty" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+        <h3>Nothing to report yet</h3>
+        <p>Once you've logged spools with a cost and a supplier, your spend breaks down here.</p>
       </div>
     </section>
   </main>
@@ -730,6 +794,7 @@ function watchData() {
   unsubs.push(onSnapshot(spoolsCol(), snap => {
     SPOOLS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderInventory();
+    renderReport();
     if ($("detModal").classList.contains("open") && DETAIL_GROUP) openDetail(DETAIL_GROUP, true);
   }, err => toast("Inventory sync failed: " + err.message, true)));
   unsubs.push(onSnapshot(aliasesCol(), snap => {
@@ -841,10 +906,138 @@ function renderInventory() {
       "</div></button>";
   }).join("");
   wrap.querySelectorAll(".tile").forEach(t => t.addEventListener("click", () => openDetail(t.dataset.g)));
-  $("footNote").textContent = gs.length + " of " + groups().length + " filaments shown";
+  if (!$("tab-inv").hidden) $("footNote").textContent = gs.length + " of " + groups().length + " filaments shown";
 }
 
 ["invSearch", "fBrand", "fMat", "fSort"].forEach(id => $(id).addEventListener("input", renderInventory));
+
+/* ═══════════════════════════════════════════════════════════
+   Supplier spend report
+
+   Built entirely from the spool records, which are synced — the
+   supplier dropdown is only an input aid and holds no purchase data.
+
+   The one subtlety: cost-per-kg divides spend by the weight of the
+   spools that ACTUALLY have a cost. Dividing by total weight would
+   silently understate every supplier you've part-costed, which is the
+   easiest way to make a spend report quietly lie.
+   ═══════════════════════════════════════════════════════════ */
+const UNRECORDED = "— No supplier recorded —";
+let REP_SORT = "spend";
+
+function supplierReport() {
+  const from = $("repFrom").value, to = $("repTo").value;
+  const dated = !!(from || to);
+  const rows = new Map();
+  let skippedUndated = 0;
+
+  for (const s of SPOOLS) {
+    if (dated) {
+      // purchasedAt is YYYY-MM-DD, so string compare is date compare.
+      if (!s.purchasedAt) { skippedUndated++; continue; }
+      if (from && s.purchasedAt < from) continue;
+      if (to && s.purchasedAt > to) continue;
+    }
+    const name = (s.vendor || "").trim() || UNRECORDED;
+    if (!rows.has(name)) rows.set(name, { name, spools: 0, withCost: 0, spend: 0, kgPriced: 0, kgTotal: 0 });
+    const r = rows.get(name);
+    r.spools++;
+    r.kgTotal += (s.weight || 0) / 1000;
+    if (typeof s.cost === "number") {
+      r.withCost++; r.spend += s.cost; r.kgPriced += (s.weight || 0) / 1000;
+    }
+  }
+  const list = [...rows.values()];
+  for (const r of list) {
+    r.noCost = r.spools - r.withCost;
+    r.costPerKg = r.kgPriced > 0 ? r.spend / r.kgPriced : null;
+  }
+  const cmp = {
+    spend:    (a, b) => b.spend - a.spend,
+    perkg:    (a, b) => (a.costPerKg == null) - (b.costPerKg == null) || (a.costPerKg ?? 0) - (b.costPerKg ?? 0),
+    spools:   (a, b) => b.spools - a.spools,
+    name:     (a, b) => a.name.localeCompare(b.name)
+  }[REP_SORT];
+  list.sort(cmp);
+
+  const tot = list.reduce((t, r) => ({
+    spools: t.spools + r.spools, withCost: t.withCost + r.withCost, spend: t.spend + r.spend,
+    kgPriced: t.kgPriced + r.kgPriced, kgTotal: t.kgTotal + r.kgTotal
+  }), { spools: 0, withCost: 0, spend: 0, kgPriced: 0, kgTotal: 0 });
+  tot.costPerKg = tot.kgPriced > 0 ? tot.spend / tot.kgPriced : null;
+  tot.noCost = tot.spools - tot.withCost;
+
+  return { list, tot, skippedUndated, dated };
+}
+
+function renderReport() {
+  const { list, tot, skippedUndated, dated } = supplierReport();
+  $("repEmpty").hidden = list.length > 0;
+  $("repTable").parentElement.hidden = list.length === 0;
+
+  $("repStats").innerHTML = [
+    ["Total spend", money(tot.spend)],
+    ["Spools purchased", tot.spools],
+    ["Material purchased", tot.kgTotal.toFixed(1) + ' <small>kg</small>'],
+    ["Blended cost", tot.costPerKg == null ? "—" : money(tot.costPerKg) + ' <small>/kg</small>']
+  ].map(([k, v]) => '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + "</div></div>").join("");
+
+  if (!list.length) { $("repTable").innerHTML = ""; $("repNote").textContent = ""; return; }
+
+  const max = Math.max(...list.map(r => r.spend), 1);
+  const th = (key, label) => '<th class="sortable' + (REP_SORT === key ? " on" : "") + '" data-sort="' + key + '">' + label + "</th>";
+
+  $("repTable").innerHTML =
+    "<thead><tr>" + th("name", "Supplier") + th("spend", "Spend") + th("spools", "Spools") +
+      '<th>kg</th>' + th("perkg", "Cost / kg") + "</tr></thead><tbody>" +
+    list.map(r =>
+      "<tr><td>" +
+        '<span class="rep-name">' + esc(r.name) + "</span>" +
+        (r.noCost ? '<span class="warn-dot" title="' + r.noCost + ' spool(s) here have no cost recorded">●</span>' : "") +
+      "</td>" +
+      '<td><div class="rep-spend"><span class="v">' + money(r.spend) + "</span>" +
+        '<span class="mbar"><span style="width:' + (r.spend / max * 100).toFixed(1) + '%"></span></span></div></td>' +
+      '<td class="num">' + r.spools + (r.noCost ? '<span class="muted-cell"> (' + r.noCost + " no cost)</span>" : "") + "</td>" +
+      '<td class="num">' + r.kgTotal.toFixed(1) + "</td>" +
+      '<td class="num' + (r.costPerKg == null ? " muted-cell" : "") + '">' + (r.costPerKg == null ? "—" : money(r.costPerKg)) + "</td></tr>"
+    ).join("") + "</tbody>" +
+    "<tfoot><tr><td>All suppliers</td>" +
+      '<td class="num">' + money(tot.spend) + "</td>" +
+      '<td class="num">' + tot.spools + "</td>" +
+      '<td class="num">' + tot.kgTotal.toFixed(1) + "</td>" +
+      '<td class="num">' + (tot.costPerKg == null ? "—" : money(tot.costPerKg)) + "</td></tr></tfoot>";
+
+  $("repTable").querySelectorAll("th.sortable").forEach(h => h.addEventListener("click", () => {
+    REP_SORT = h.dataset.sort; renderReport();
+  }));
+  if (!$("tab-rep").hidden) {
+    $("footNote").textContent = list.length + " supplier" + (list.length === 1 ? "" : "s");
+  }
+
+  const notes = [];
+  if (tot.noCost) notes.push(tot.noCost + " spool" + (tot.noCost > 1 ? "s have" : " has") +
+    " no cost recorded, so they count toward kg but not spend. Cost/kg is calculated only from spools that have a cost.");
+  if (dated && skippedUndated) notes.push(skippedUndated + " spool" + (skippedUndated > 1 ? "s have" : " has") +
+    " no purchase date and are excluded while a date filter is set.");
+  $("repNote").textContent = notes.join("  ");
+}
+
+["repFrom", "repTo"].forEach(id => $(id).addEventListener("change", renderReport));
+$("repClear").addEventListener("click", () => { $("repFrom").value = ""; $("repTo").value = ""; renderReport(); });
+$("repExport").addEventListener("click", () => {
+  const { list, tot } = supplierReport();
+  if (!list.length) { toast("Nothing to export yet."); return; }
+  const cell = v => v == null ? "" : /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+  const line = r => [r.name, r.spend.toFixed(2), r.spools, r.noCost, r.kgTotal.toFixed(3),
+                     r.costPerKg == null ? "" : r.costPerKg.toFixed(2)].map(cell).join(",");
+  const csv = ["supplier,spend,spools,spools_without_cost,kg,cost_per_kg"]
+    .concat(list.map(line)).concat([line({ ...tot, name: "ALL SUPPLIERS" })]).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "spooltrack-suppliers-" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.click(); URL.revokeObjectURL(url);
+  toast("Supplier report exported");
+});
 
 /* ═══════════════════════════════════════════════════════════
    Detail drawer
@@ -968,6 +1161,41 @@ function allVendors() {
 function refreshVendorDatalist() {
   $("vendorList").innerHTML = allVendors().map(v => '<option value="' + esc(v) + '"></option>').join("");
 }
+/* Fold a typed name onto the canonical spelling already on record, so
+   "amazon", "Amazon " and "Amazon" don't become three rows in the spend
+   report. Case and whitespace drift is the main thing that corrupts a
+   free-text supplier field. */
+function canonicalVendor(input) {
+  const v = (input || "").trim().replace(/\s+/g, " ");
+  if (!v) return null;
+  return allVendors().find(x => x.toLowerCase() === v.toLowerCase()) || v;
+}
+
+/* Rename everywhere — or merge, if the new name is already in use.
+   Updates every affected spool so the report stays truthful. */
+async function renameVendor(oldName, rawNew) {
+  const newName = (rawNew || "").trim().replace(/\s+/g, " ");
+  if (!newName || newName === oldName) return;
+  const affected = SPOOLS.filter(s => (s.vendor || "").trim().toLowerCase() === oldName.toLowerCase());
+  const existing = allVendors().find(x => x.toLowerCase() === newName.toLowerCase() && x.toLowerCase() !== oldName.toLowerCase());
+  if (existing && !confirm('"' + existing + '" already exists. Merge "' + oldName + '" into it?' +
+      (affected.length ? "\n\n" + affected.length + " spool(s) will be reassigned." : ""))) return;
+  const target = existing || newName;
+  try {
+    // Firestore caps a batch at 500 writes.
+    for (let i = 0; i < affected.length; i += 400) {
+      const batch = writeBatch(db);
+      affected.slice(i, i + 400).forEach(s => batch.update(doc(spoolsCol(), s.id), { vendor: target }));
+      await batch.commit();
+    }
+    const list = loadVendors().filter(x => x.trim().toLowerCase() !== oldName.toLowerCase());
+    if (!list.some(x => x.trim().toLowerCase() === target.toLowerCase())) list.push(target);
+    saveVendors(list);
+    refreshVendorDatalist(); renderVendorManager();
+    toast(existing ? "Merged into " + target : "Renamed to " + target);
+  } catch (e) { toast("Couldn't rename: " + e.message, true); }
+}
+
 /* Remember a newly typed supplier so it's in the list next time. */
 function rememberVendor(name) {
   const v = (name || "").trim();
@@ -983,6 +1211,7 @@ function renderVendorManager() {
   $("vendList").innerHTML = list.map(v => {
     const used = inUse.has(v.trim().toLowerCase());
     return '<span class="vend-item' + (used ? " used" : "") + '">' + esc(v) +
+      '<button class="pen" data-rn="' + esc(v) + '" title="Rename or merge">✎</button>' +
       '<button class="x" data-v="' + esc(v) + '"' + (used ? ' disabled title="In use on spools in your inventory"' : ' title="Remove"') +
       '>&times;</button></span>';
   }).join("") || '<p class="hint">No suppliers yet.</p>';
@@ -990,6 +1219,11 @@ function renderVendorManager() {
   $("vendInUse").textContent = usedCount
     ? usedCount + " supplier" + (usedCount > 1 ? "s are" : " is") + " in use on spools and can't be removed."
     : "";
+  $("vendList").querySelectorAll("[data-rn]").forEach(b => b.addEventListener("click", () => {
+    const cur = b.dataset.rn;
+    const next = prompt('Rename "' + cur + '" to:\n\nEvery spool using it is updated. Type an existing supplier\'s name to merge them together.', cur);
+    if (next !== null) renameVendor(cur, next);
+  }));
   $("vendList").querySelectorAll(".x:not([disabled])").forEach(b => b.addEventListener("click", () => {
     const v = b.dataset.v;
     saveVendors(loadVendors().filter(x => x.trim().toLowerCase() !== v.trim().toLowerCase()));
@@ -1043,7 +1277,7 @@ $("addSave").addEventListener("click", async () => {
   const costRaw = $("aCost").value.trim();
   const cost = costRaw === "" ? null : Number(costRaw);
   if (cost !== null && (isNaN(cost) || cost < 0)) { toast("That cost doesn't look right.", true); return; }
-  const vendor = $("aVendor").value.trim() || null;
+  const vendor = canonicalVendor($("aVendor").value);
   const p = PENDING;
   const base = {
     key: p.key || null,
@@ -1232,7 +1466,9 @@ function switchTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
   $("tab-inv").hidden = name !== "inv";
   $("tab-add").hidden = name !== "add";
+  $("tab-rep").hidden = name !== "rep";
   if (name === "add") { refreshAddUI(); setTimeout(() => $("scanInput").focus(), 60); }
+  if (name === "rep") renderReport();
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 $("goAddBtn").addEventListener("click", () => switchTab("add"));
