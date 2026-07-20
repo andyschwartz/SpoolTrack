@@ -170,6 +170,56 @@
   .tile-flag { position: absolute; top: 0; right: 0; z-index: 2; font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 7px; border-radius: 0 15px 0 10px; background: var(--warn); color: #1a1405; }
   .tile-flag.out { background: var(--danger); color: #fff; }
 
+  /* ── Density: tile size + how much detail each tile carries ── */
+  .tiles[data-d="1"] { grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 10px; }
+  .tiles[data-d="2"] { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+  .tiles[data-d="3"] { grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 16px; }
+  .tiles[data-d="4"] { grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 18px; }
+  .tiles[data-d="1"] .tile { padding: 10px; border-radius: 13px; }
+  .tiles[data-d="1"] .tile-sym { font-size: 25px; }
+  .tiles[data-d="1"] .tile-series, .tiles[data-d="1"] .tile-brand, .tiles[data-d="1"] .tile-wt { display: none; }
+  .tiles[data-d="1"] .tile-color { font-size: 11px; -webkit-line-clamp: 1; }
+  .tiles[data-d="3"] .tile-sym { font-size: 46px; }
+  .tiles[data-d="4"] .tile { padding: 17px; }
+  .tiles[data-d="4"] .tile-sym { font-size: 56px; }
+  .tiles[data-d="4"] .tile-color { font-size: 14px; }
+  .tile-traits, .tile-specs { display: none; }
+  .tiles[data-d="3"] .tile-traits, .tiles[data-d="4"] .tile-traits { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+  .tile-traits span { font-size: 8.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 999px; background: rgba(127,127,127,0.22); backdrop-filter: blur(2px); }
+  .tiles[data-d="4"] .tile-specs { display: block; font-size: 10px; font-weight: 600; opacity: 0.7; margin-top: 7px; }
+
+  /* ── List view (density 0) ───────────────────────────────── */
+  .listv { display: flex; flex-direction: column; gap: 1px; background: var(--card-border);
+    border: 1px solid var(--card-border); border-radius: 14px; overflow: hidden; }
+  .lrow { display: grid; grid-template-columns: 26px 52px 1fr 130px 62px 58px; align-items: center; gap: 12px;
+    padding: 10px 14px; background: var(--card); border: none; text-align: left; width: 100%; color: inherit;
+    transition: background 0.13s ease; }
+  .lrow:hover { background: var(--card-hover); }
+  .lsw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--tile-ring); }
+  .lmat { font-size: 12px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); }
+  .lname { min-width: 0; font-size: 13px; font-weight: 620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lname em { font-style: normal; font-weight: 500; color: var(--text-faint); margin-left: 7px; font-size: 11.5px; }
+  .lbrand { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lqty { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .lqty.out { color: var(--danger); }
+  .lqty.low { color: var(--warn); }
+  .lwt { font-size: 11px; color: var(--text-faint); text-align: right; }
+  @media (max-width: 700px) {
+    .lrow { grid-template-columns: 26px 44px 1fr 52px; }
+    .lbrand, .lwt { display: none; }
+  }
+
+  /* density control */
+  .dens { gap: 10px; }
+  .dens input[type=range] { -webkit-appearance: none; appearance: none; width: 108px; height: 4px; border-radius: 3px;
+    background: var(--input-border); outline: none; }
+  .dens input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: none; }
+  .dens input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent);
+    cursor: pointer; border: none; }
+
   /* ── Empty / loading ─────────────────────────────────────── */
   .empty { text-align: center; padding: 70px 20px; color: var(--text-muted); }
   .empty svg { width: 46px; height: 46px; color: var(--text-faint); margin-bottom: 14px; }
@@ -208,6 +258,10 @@
   /* ── Modal / drawer ──────────────────────────────────────── */
   .modal-wrap { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(3,7,9,0.62); backdrop-filter: blur(3px); }
   .modal-wrap.open { display: flex; }
+  /* Explicit stacking: these open on top of another modal, and equal
+     z-index would let DOM order bury them behind it. */
+  #editModal { z-index: 46; }
+  #vendModal { z-index: 48; }
   .modal { width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); }
   .modal.wide { max-width: 640px; }
   .modal h3 { margin: 0 0 5px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
@@ -392,6 +446,11 @@
           <option value="value">Sort: Value</option>
         </select></div>
         <div class="spacer"></div>
+        <div class="field dens" title="Card size — drag fully left for a list">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          <input id="densRange" type="range" min="0" max="4" step="1" value="2" aria-label="Card size" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </div>
         <button class="btn" id="exportBtn">Export CSV</button>
         <button class="btn primary" id="goAddBtn">+ Add spools</button>
       </div>
@@ -494,6 +553,35 @@
   </div>
 </div>
 
+<!-- ── Edit spool modal ──────────────────────────────────── -->
+<div class="modal-wrap" id="editModal">
+  <div class="modal">
+    <h3 id="editTitle">Edit spool</h3>
+    <p class="msub" id="editSub">Update what you know about this spool.</p>
+    <div class="prev" id="editPrev"></div>
+    <div class="form-grid">
+      <div>
+        <div class="lbl-row">
+          <label class="lbl" for="eVendor">Supplier</label>
+          <button type="button" class="link-mini" id="eVendorManage">Manage</button>
+        </div>
+        <input class="inp" id="eVendor" type="text" list="vendorList" autocomplete="off" />
+      </div>
+      <div><label class="lbl" for="eCost">Cost each</label><input class="inp" id="eCost" type="number" min="0" step="0.01" /></div>
+      <div><label class="lbl" for="ePurchased">Purchased</label><input class="inp" id="ePurchased" type="date" /></div>
+      <div><label class="lbl" for="eOrder">Order ref</label><input class="inp" id="eOrder" type="text" autocomplete="off" /></div>
+      <div><label class="lbl" for="eStatus">Condition</label><select class="inp" id="eStatus"></select></div>
+      <div class="full"><label class="lbl" for="eNotes">Notes</label><textarea class="inp" id="eNotes"></textarea></div>
+    </div>
+    <p class="hint" id="editHint"></p>
+    <div class="modal-actions">
+      <button class="btn ghost-danger" id="editDelete">Remove</button>
+      <button class="btn" id="editCancel">Cancel</button>
+      <button class="btn primary" id="editSave">Save changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Manage suppliers modal ────────────────────────────── -->
 <div class="modal-wrap" id="vendModal">
   <div class="modal">
@@ -544,6 +632,7 @@
     <div id="detSpools"></div>
     <div class="modal-actions">
       <button class="btn ghost-danger" id="detRemoveAll">Remove all</button>
+      <button class="btn" id="detEditAll">Edit all</button>
       <button class="btn" id="detClose">Close</button>
       <button class="btn primary" id="detAddMore">+ Add more</button>
     </div>
@@ -891,25 +980,62 @@ function renderInventory() {
   wrap.hidden = SPOOLS.length === 0;
   if (!SPOOLS.length) { wrap.innerHTML = ""; $("footNote").textContent = ""; return; }
 
-  wrap.innerHTML = gs.map(g => {
-    const s = g.sample, n = activeSpools(g).length, ink = inkFor(s.hex);
-    const flag = n === 0 ? '<span class="tile-flag out">Out</span>' : (n === 1 ? '<span class="tile-flag">Last one</span>' : "");
-    return '<button class="tile ' + fxClass(s.traits) + (flag ? " flagged" : "") + '" data-g="' + esc(g.k) + '" style="--tile-bg:' + esc(s.hex) + ';--tile-fg:' + ink + '">' +
-      flag +
-      '<div class="tile-row"><span class="tile-qty">' + n + '<small>×</small></span>' +
-        '<span class="tile-wt">' + (s.weight ? (s.weight >= 1000 ? (s.weight / 1000) + " kg" : s.weight + " g") : "") + "</span></div>" +
-      '<div class="tile-sym">' + esc(s.material) + "</div>" +
-      '<div class="tile-meta">' +
-        '<div class="tile-color">' + esc(s.color) + "</div>" +
-        '<div class="tile-series">' + esc(s.series || "—") + "</div>" +
-        '<div class="tile-brand">' + esc(s.brand) + "</div>" +
-      "</div></button>";
-  }).join("");
-  wrap.querySelectorAll(".tile").forEach(t => t.addEventListener("click", () => openDetail(t.dataset.g)));
+  const wt = s => s.weight ? (s.weight >= 1000 ? (s.weight / 1000) + " kg" : s.weight + " g") : "";
+
+  if (DENSITY === 0) {
+    // Fully collapsed: a dense list with a small colour chip instead of cards.
+    wrap.className = "listv"; wrap.removeAttribute("data-d");
+    wrap.innerHTML = gs.map(g => {
+      const s = g.sample, n = activeSpools(g).length;
+      return '<button class="lrow" data-g="' + esc(g.k) + '">' +
+        '<span class="lsw" style="background:' + esc(s.hex) + '"></span>' +
+        '<span class="lmat">' + esc(s.material) + "</span>" +
+        '<span class="lname">' + esc(s.color) + (s.series ? "<em>" + esc(s.series) + "</em>" : "") + "</span>" +
+        '<span class="lbrand">' + esc(s.brand) + "</span>" +
+        '<span class="lqty' + (n === 0 ? " out" : n === 1 ? " low" : "") + '">' + n + "×</span>" +
+        '<span class="lwt">' + wt(s) + "</span></button>";
+    }).join("");
+    wrap.querySelectorAll(".lrow").forEach(t => t.addEventListener("click", () => openDetail(t.dataset.g)));
+  } else {
+    wrap.className = "tiles"; wrap.setAttribute("data-d", DENSITY);
+    wrap.innerHTML = gs.map(g => {
+      const s = g.sample, n = activeSpools(g).length, ink = inkFor(s.hex);
+      const flag = n === 0 ? '<span class="tile-flag out">Out</span>' : (n === 1 ? '<span class="tile-flag">Last one</span>' : "");
+      const traits = (s.traits || []).slice(0, 3).map(t => "<span>" + esc(traitLabel(t)) + "</span>").join("");
+      const specs = [s.diameter ? s.diameter + " mm" : "", (s.tempMin || s.tempMax) ? [s.tempMin, s.tempMax].filter(Boolean).join("–") + " °C" : ""]
+        .filter(Boolean).join("  ·  ");
+      return '<button class="tile ' + fxClass(s.traits) + (flag ? " flagged" : "") + '" data-g="' + esc(g.k) + '" style="--tile-bg:' + esc(s.hex) + ';--tile-fg:' + ink + '">' +
+        flag +
+        '<div class="tile-row"><span class="tile-qty">' + n + '<small>×</small></span>' +
+          '<span class="tile-wt">' + wt(s) + "</span></div>" +
+        '<div class="tile-sym">' + esc(s.material) + "</div>" +
+        '<div class="tile-meta">' +
+          '<div class="tile-color">' + esc(s.color) + "</div>" +
+          '<div class="tile-series">' + esc(s.series || "—") + "</div>" +
+          '<div class="tile-brand">' + esc(s.brand) + "</div>" +
+          (traits ? '<div class="tile-traits">' + traits + "</div>" : "") +
+          (specs ? '<div class="tile-specs">' + esc(specs) + "</div>" : "") +
+        "</div></button>";
+    }).join("");
+    wrap.querySelectorAll(".tile").forEach(t => t.addEventListener("click", () => openDetail(t.dataset.g)));
+  }
   if (!$("tab-inv").hidden) $("footNote").textContent = gs.length + " of " + groups().length + " filaments shown";
 }
 
 ["invSearch", "fBrand", "fMat", "fSort"].forEach(id => $(id).addEventListener("input", renderInventory));
+
+/* Card size: 0 collapses to a list, 4 is the roomiest card. */
+const DENSITY_KEY = "spooltrack.density";
+let DENSITY = (() => {
+  const v = parseInt(localStorage.getItem(DENSITY_KEY), 10);
+  return isNaN(v) || v < 0 || v > 4 ? 2 : v;
+})();
+$("densRange").value = DENSITY;
+$("densRange").addEventListener("input", e => {
+  DENSITY = parseInt(e.target.value, 10);
+  try { localStorage.setItem(DENSITY_KEY, DENSITY); } catch { /* private mode */ }
+  renderInventory();
+});
 
 /* ═══════════════════════════════════════════════════════════
    Supplier spend report
@@ -1072,7 +1198,8 @@ function openDetail(k, keepOpen) {
       '<div class="sr-main"><div class="sr-t">' + st[0].toUpperCase() + st.slice(1) + " · " + money(sp.cost) + "</div>" +
       '<div class="sr-s">' + [sp.vendor, sp.purchasedAt, sp.orderRef].filter(Boolean).map(esc).join(" · ") + (sp.notes ? " · " + esc(sp.notes) : "") + "</div></div>" +
       '<button class="mini" data-cycle="1">' + (st === "sealed" ? "Open it" : st === "open" ? "Mark empty" : "Restock") + "</button>" +
-      '<button class="mini danger" data-del="1">Remove</button></div>';
+      '<button class="mini" data-edit="1">Edit</button>' +
+      '<button class="mini danger" data-del="1" title="Remove this spool">&times;</button></div>';
   }).join("");
 
   $("detSpools").querySelectorAll("[data-cycle]").forEach(b => b.addEventListener("click", async e => {
@@ -1080,6 +1207,9 @@ function openDetail(k, keepOpen) {
     const sp = SPOOLS.find(x => x.id === id); if (!sp) return;
     const next = { sealed: "open", open: "empty", empty: "sealed" }[sp.status || "sealed"];
     await updateDoc(doc(spoolsCol(), id), { status: next });
+  }));
+  $("detSpools").querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", e => {
+    openEdit([e.target.closest(".spool-row").dataset.id]);
   }));
   $("detSpools").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async e => {
     const id = e.target.closest(".spool-row").dataset.id;
@@ -1090,6 +1220,10 @@ function openDetail(k, keepOpen) {
   if (!keepOpen) openModal("detModal");
 }
 $("detClose").addEventListener("click", () => closeModal("detModal"));
+$("detEditAll").addEventListener("click", () => {
+  const g = groups().find(x => x.k === DETAIL_GROUP); if (!g) return;
+  openEdit(g.spools.map(s => s.id));
+});
 $("detAddMore").addEventListener("click", () => {
   const g = groups().find(x => x.k === DETAIL_GROUP); if (!g) return;
   closeModal("detModal"); openAdd(g.sample, null);
@@ -1101,6 +1235,120 @@ $("detRemoveAll").addEventListener("click", async () => {
   g.spools.forEach(sp => batch.delete(doc(spoolsCol(), sp.id)));
   await batch.commit();
   closeModal("detModal"); toast("Removed");
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Editing spools
+
+   Works for one spool or a whole batch. Only fields you actually
+   change are written, which is what makes batch editing safe: a
+   field showing "Mixed" that you don't touch leaves every spool's
+   own value alone. The same diff makes single edits behave
+   naturally too — clearing a field clears it.
+   ═══════════════════════════════════════════════════════════ */
+const MIXED = "— Mixed —";
+const EDIT_FIELDS = [
+  ["eVendor", "vendor"], ["eCost", "cost"], ["ePurchased", "purchasedAt"],
+  ["eOrder", "orderRef"], ["eStatus", "status"], ["eNotes", "notes"]
+];
+let EDIT_IDS = [], EDIT_INITIAL = {};
+
+/* One shared value across the selection, or null when they differ. */
+function sharedValue(spools, field) {
+  const vals = new Set(spools.map(s => s[field] == null ? "" : String(s[field])));
+  return vals.size === 1 ? [...vals][0] : null;
+}
+const editSnapshot = () => Object.fromEntries(EDIT_FIELDS.map(([el]) => [el, $(el).value]));
+
+function openEdit(ids) {
+  const spools = SPOOLS.filter(s => ids.includes(s.id));
+  if (!spools.length) return;
+  EDIT_IDS = spools.map(s => s.id);
+  const multi = spools.length > 1, s0 = spools[0];
+
+  $("editTitle").textContent = multi ? "Edit " + spools.length + " spools" : "Edit spool";
+  $("editSub").textContent = multi
+    ? "Changes apply to all " + spools.length + ". Anything left showing “Mixed” keeps each spool's own value."
+    : "Fill in whatever you know — blank clears the field.";
+  $("editPrev").innerHTML =
+    '<span class="swatch" style="background:' + esc(s0.hex) + '"></span>' +
+    '<div><div class="t">' + esc(s0.color) + "</div>" +
+    '<div class="s">' + esc([s0.brand, s0.series, s0.material].filter(Boolean).join(" · ")) + "</div>" +
+    '<div class="x">' + (multi ? spools.length + " spools selected" : "1 spool") + "</div></div>";
+
+  refreshVendorDatalist();
+  for (const [el, field] of EDIT_FIELDS) {
+    if (el === "eStatus") continue;
+    const v = sharedValue(spools, field);
+    $(el).value = v === null ? "" : v;
+    $(el).placeholder = v === null ? MIXED : "";
+  }
+  const st = sharedValue(spools, "status");
+  $("eStatus").innerHTML =
+    (st === null ? '<option value="' + MIXED + '">' + MIXED + "</option>" : "") +
+    ["sealed", "open", "empty"].map(x => '<option value="' + x + '">' + x[0].toUpperCase() + x.slice(1) + "</option>").join("");
+  $("eStatus").value = st === null ? MIXED : (st || "sealed");
+
+  EDIT_INITIAL = editSnapshot();
+  $("editDelete").textContent = multi ? "Remove all " + spools.length : "Remove";
+  $("editHint").textContent = multi ? "" : "Added " + (s0.purchasedAt ? "· purchased " + s0.purchasedAt : "");
+  openModal("editModal");
+  setTimeout(() => $("eVendor").focus(), 60);
+}
+
+$("editCancel").addEventListener("click", () => closeModal("editModal"));
+$("eVendorManage").addEventListener("click", () => { renderVendorManager(); openModal("vendModal"); setTimeout(() => $("vendNew").focus(), 60); });
+
+$("editSave").addEventListener("click", async () => {
+  if (!EDIT_IDS.length || !UID) return;
+  const cur = editSnapshot(), patch = {};
+  for (const [el, field] of EDIT_FIELDS) {
+    if (cur[el] === EDIT_INITIAL[el]) continue;          // untouched — leave every spool alone
+    const raw = cur[el].trim();
+    if (field === "cost") {
+      if (raw === "") patch.cost = null;
+      else {
+        const n = Number(raw);
+        if (isNaN(n) || n < 0) { toast("That cost doesn't look right.", true); return; }
+        patch.cost = n;
+      }
+    } else if (field === "vendor") {
+      patch.vendor = canonicalVendor(raw);
+    } else if (field === "status") {
+      if (raw === MIXED) continue;
+      patch.status = raw;
+    } else {
+      patch[field] = raw || null;
+    }
+  }
+  if (!Object.keys(patch).length) { closeModal("editModal"); toast("No changes"); return; }
+  $("editSave").disabled = true;
+  try {
+    for (let i = 0; i < EDIT_IDS.length; i += 400) {   // Firestore caps a batch at 500
+      const batch = writeBatch(db);
+      EDIT_IDS.slice(i, i + 400).forEach(id => batch.update(doc(spoolsCol(), id), patch));
+      await batch.commit();
+    }
+    if (patch.vendor) rememberVendor(patch.vendor);
+    closeModal("editModal");
+    toast("Updated " + EDIT_IDS.length + " spool" + (EDIT_IDS.length > 1 ? "s" : ""));
+  } catch (e) {
+    toast("Couldn't save: " + e.message, true);
+  } finally { $("editSave").disabled = false; }
+});
+
+$("editDelete").addEventListener("click", async () => {
+  if (!EDIT_IDS.length) return;
+  if (!confirm("Remove " + EDIT_IDS.length + " spool" + (EDIT_IDS.length > 1 ? "s" : "") + "? This can't be undone.")) return;
+  try {
+    for (let i = 0; i < EDIT_IDS.length; i += 400) {
+      const batch = writeBatch(db);
+      EDIT_IDS.slice(i, i + 400).forEach(id => batch.delete(doc(spoolsCol(), id)));
+      await batch.commit();
+    }
+    closeModal("editModal");
+    toast("Removed");
+  } catch (e) { toast("Couldn't remove: " + e.message, true); }
 });
 
 /* ═══════════════════════════════════════════════════════════

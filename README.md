@@ -27,7 +27,13 @@ sign-in.
   already used on spools are locked so the list can't drift out of sync with
   your data.
 - **See it all** as colour-coded periodic-table tiles driven by the database's
-  hex codes, with light and dark themes.
+  hex codes, with light and dark themes. A size slider scales the cards and
+  reveals more per card as they grow; dragged fully left it becomes a dense list
+  with a small colour chip. The choice is remembered.
+- **Edit after the fact** — open a filament and edit any spool, or "Edit all" to
+  fix a whole batch at once (the "I forgot the supplier on those five" case).
+  Batch edits only write the fields you actually change: anything showing
+  "Mixed" keeps each spool's own value.
 - **Report on supplier spend** — spend, spools, kg and cost-per-kg per supplier,
   with a purchase-date range filter and CSV export.
 
