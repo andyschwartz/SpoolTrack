@@ -34,6 +34,11 @@ sign-in.
   fix a whole batch at once (the "I forgot the supplier on those five" case).
   Batch edits only write the fields you actually change: anything showing
   "Mixed" keeps each spool's own value.
+- **Find what still needs filling in** — filter by supplier, including a
+  "No supplier (n)" option, or sort by supplier (blanks first). Because supplier
+  lives on the spool and one tile can span several orders, a tile where only
+  some spools lack a supplier offers "Set supplier on n", which edits just that
+  subset rather than overwriting the ones already correct.
 - **Report on supplier spend** — spend, spools, kg and cost-per-kg per supplier,
   with a purchase-date range filter and CSV export.
 

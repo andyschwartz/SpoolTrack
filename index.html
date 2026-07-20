@@ -136,6 +136,9 @@
   .field select { cursor: pointer; padding-right: 4px; }
   .field select option { background: var(--card); color: var(--text); }
   .spacer { flex: 1 1 auto; }
+  /* Keep the size slider and the two buttons together so they wrap as one
+     block instead of stranding a lone button on its own row. */
+  .tb-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
 
   /* ── Periodic tile grid ──────────────────────────────────── */
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
@@ -438,14 +441,16 @@
         </div>
         <div class="field"><select id="fBrand"><option value="">All brands</option></select></div>
         <div class="field"><select id="fMat"><option value="">All materials</option></select></div>
+        <div class="field"><select id="fVendor"><option value="">All suppliers</option></select></div>
         <div class="field"><select id="fSort">
           <option value="brand">Sort: Brand</option>
           <option value="color">Sort: Color</option>
+          <option value="supplier">Sort: Supplier</option>
           <option value="qty">Sort: Quantity</option>
           <option value="recent">Sort: Recently added</option>
           <option value="value">Sort: Value</option>
         </select></div>
-        <div class="spacer"></div>
+        <div class="tb-right">
         <div class="field dens" title="Card size — drag fully left for a list">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           <input id="densRange" type="range" min="0" max="4" step="1" value="2" aria-label="Card size" />
@@ -453,6 +458,7 @@
         </div>
         <button class="btn" id="exportBtn">Export CSV</button>
         <button class="btn primary" id="goAddBtn">+ Add spools</button>
+        </div>
       </div>
       <div class="tiles" id="tiles"></div>
       <div class="empty" id="invEmpty" hidden>
@@ -632,6 +638,7 @@
     <div id="detSpools"></div>
     <div class="modal-actions">
       <button class="btn ghost-danger" id="detRemoveAll">Remove all</button>
+      <button class="btn" id="detFixVendor" hidden></button>
       <button class="btn" id="detEditAll">Edit all</button>
       <button class="btn" id="detClose">Close</button>
       <button class="btn primary" id="detAddMore">+ Add more</button>
@@ -946,6 +953,17 @@ function renderStats() {
   ].map(([k, v]) => '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + "</div></div>").join("");
 }
 
+/* Supplier lives on the spool, not the tile — a tile can hold spools from
+   several orders. These summarise a group for filtering and sorting. */
+const NO_VENDOR = "__none__";
+const groupVendors = g => new Set(g.spools.map(s => (s.vendor || "").trim()));
+const missingVendor = g => g.spools.filter(s => !(s.vendor || "").trim());
+function groupVendorLabel(g) {
+  const v = [...groupVendors(g)];
+  if (v.length > 1) return "Mixed";
+  return v[0] || "";
+}
+
 function fillFilters() {
   const gs = groups();
   for (const [sel, field] of [["fBrand", "brand"], ["fMat", "material"]]) {
@@ -955,20 +973,37 @@ function fillFilters() {
       vals.map(v => '<option value="' + esc(v) + '">' + esc(v) + "</option>").join("");
     if (vals.includes(cur)) e.value = cur;
   }
+  const ev = $("fVendor"), curV = ev.value;
+  const vendors = [...new Set(SPOOLS.map(s => (s.vendor || "").trim()).filter(Boolean))].sort();
+  const noneCount = SPOOLS.filter(s => !(s.vendor || "").trim()).length;
+  ev.innerHTML = '<option value="">All suppliers</option>' +
+    (noneCount ? '<option value="' + NO_VENDOR + '">No supplier (' + noneCount + ")</option>" : "") +
+    vendors.map(v => '<option value="' + esc(v) + '">' + esc(v) + "</option>").join("");
+  if ([...ev.options].some(o => o.value === curV)) ev.value = curV;
 }
 
 function renderInventory() {
   renderStats(); fillFilters();
   const q = $("invSearch").value.trim().toLowerCase();
-  const fb = $("fBrand").value, fm = $("fMat").value, sort = $("fSort").value;
+  const fb = $("fBrand").value, fm = $("fMat").value, fv = $("fVendor").value, sort = $("fSort").value;
   let gs = groups();
   if (fb) gs = gs.filter(g => g.sample.brand === fb);
   if (fm) gs = gs.filter(g => g.sample.material === fm);
+  // Match on any spool in the tile, since one tile can span several orders.
+  if (fv === NO_VENDOR) gs = gs.filter(g => missingVendor(g).length > 0);
+  else if (fv) gs = gs.filter(g => groupVendors(g).has(fv));
   if (q) gs = gs.filter(g => { const s = g.sample; return (s.brand + " " + s.series + " " + s.material + " " + s.color).toLowerCase().includes(q); });
 
   const cmp = {
     brand:  (a, b) => (a.sample.brand + a.sample.series + a.sample.color).localeCompare(b.sample.brand + b.sample.series + b.sample.color),
     color:  (a, b) => a.sample.color.localeCompare(b.sample.color),
+    // Blanks first: the whole point of this sort is finding what still
+    // needs a supplier filled in.
+    supplier: (a, b) => {
+      const va = groupVendorLabel(a), vb = groupVendorLabel(b);
+      if (!va !== !vb) return va ? 1 : -1;
+      return va.localeCompare(vb) || a.sample.brand.localeCompare(b.sample.brand);
+    },
     qty:    (a, b) => activeSpools(b).length - activeSpools(a).length,
     recent: (a, b) => (Math.max(...b.spools.map(s => s.addedAtMs || 0))) - (Math.max(...a.spools.map(s => s.addedAtMs || 0))),
     value:  (a, b) => groupValue(b) - groupValue(a)
@@ -1022,7 +1057,7 @@ function renderInventory() {
   if (!$("tab-inv").hidden) $("footNote").textContent = gs.length + " of " + groups().length + " filaments shown";
 }
 
-["invSearch", "fBrand", "fMat", "fSort"].forEach(id => $(id).addEventListener("input", renderInventory));
+["invSearch", "fBrand", "fMat", "fVendor", "fSort"].forEach(id => $(id).addEventListener("input", renderInventory));
 
 /* Card size: 0 collapses to a list, 4 is the roomiest card. */
 const DENSITY_KEY = "spooltrack.density";
@@ -1216,6 +1251,15 @@ function openDetail(k, keepOpen) {
     await deleteDoc(doc(spoolsCol(), id));
     toast("Spool removed");
   }));
+
+  // Only offer this when it's a subset — editing all of them is already
+  // covered by "Edit all", and targeting the subset avoids overwriting a
+  // supplier that's already correct on the others.
+  const missing = missingVendor(g);
+  const fix = $("detFixVendor");
+  fix.hidden = !(missing.length && missing.length < g.spools.length);
+  if (!fix.hidden) fix.textContent = "Set supplier on " + missing.length;
+  fix.onclick = () => openEdit(missing.map(s => s.id));
 
   if (!keepOpen) openModal("detModal");
 }
